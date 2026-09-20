@@ -1,0 +1,24 @@
+// Capacitor Configuration
+const config = {
+  appId: 'com.nihongo.app',
+  appName: 'NihonGo!',
+  webDir: 'dist',
+  backgroundColor: '#0b0f19',
+  server: {
+    androidScheme: 'https',
+    cleartext: true,
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 1500,
+      backgroundColor: '#0b0f19',
+      showSpinner: false,
+    },
+    StatusBar: {
+      backgroundColor: '#0b0f19',
+      style: 'DARK',
+    },
+  },
+};
+
+export default config;

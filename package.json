@@ -1,0 +1,65 @@
+{
+  "name": "nihon-go",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "NihonGo!",
+  "description": "일본어 회화·독해 & 인터넷 밈·사어(死語) 학습 플랫폼",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "pc": "node scripts/launch-pc.mjs",
+    "apk": "node scripts/build-apk.mjs",
+    "electron:dev": "concurrently -k -s first \"vite\" \"wait-on http://localhost:5173 && electron . --dev\"",
+    "electron:preview": "npm run build && electron .",
+    "electron:build": "npm run build && electron-builder --win",
+    "cap:sync": "npm run build && cap sync",
+    "cap:add:android": "cap add android",
+    "cap:android": "npm run build && cap sync android && cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.1",
+    "@capacitor/cli": "^7.0.1",
+    "@capacitor/core": "^7.0.1",
+    "canvas-confetti": "^1.9.4",
+    "lucide-react": "^1.43.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "concurrently": "^9.1.2",
+    "electron": "^35.1.0",
+    "electron-builder": "^25.1.8",
+    "oxlint": "^1.79.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.nihongo.desktop",
+    "productName": "NihonGo!",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "public/favicon.svg"
+    }
+  }
+}
