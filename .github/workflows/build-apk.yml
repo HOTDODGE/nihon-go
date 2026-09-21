@@ -20,11 +20,11 @@ jobs:
           node-version: 22
           cache: 'npm'
 
-      - name: 3. Java (JDK 17) 환경 설정
+      - name: 3. Java (JDK 21) 환경 설정
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: 4. Android SDK 라이선스 자동 승인
         run: |
