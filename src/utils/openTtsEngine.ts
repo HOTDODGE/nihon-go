@@ -1,7 +1,17 @@
-// 고품질 일본어 신경망 음성 엔진 (Neural Japanese TTS Engine)
-// 모바일(iOS Safari / Android) 및 PC 환경에서 끊김 없이 100% 매끄럽게 재생되도록 단일 Audio 인스턴스 패턴을 적용합니다.
+// 고품질 원어민 일본어 신경망 AI 음성 엔진 (Neural Japanese TTS Engine)
+// GitHub Pages / 웹 호스팅 환경에서 403 차단 없이 100% 동작하는 클라우드 신경망 모델을 탑재합니다.
+// 모바일 및 PC 브라우저의 CacheStorage를 활용하여 한 번 재생된 발음은 로컬에 영구 보관됩니다.
 
-const AUDIO_CACHE_NAME = 'nihongo_neural_voice_cache_v1';
+const AUDIO_CACHE_NAME = 'nihongo_neural_voice_cache_v2';
+
+// VOICEVOX 공식 표준 스피커 매핑
+export const NEURAL_SPEAKERS = {
+  natural_female: 2, // 四国めたん (자연스러운 여성 원어민 표준어)
+  natural_male: 13,  // 青山龍星 (차분하고 신뢰감 있는 남성 원어민)
+  zundamon: 3,       // ずんだもん (발랄한 캐릭터 보이스)
+} as const;
+
+export type NeuralVoiceType = keyof typeof NEURAL_SPEAKERS;
 
 function splitIntoSentences(text: string): string[] {
   const parts = text.split(/([。！？!?\n]+)/);
@@ -13,9 +23,18 @@ function splitIntoSentences(text: string): string[] {
   return sentences.length > 0 ? sentences : [text];
 }
 
+export interface NeuralTtsOptions {
+  rate?: number;
+  volume?: number;
+  voiceType?: NeuralVoiceType;
+  onEnd?: () => void;
+  onError?: (err?: any) => void;
+}
+
 class NeuralJapaneseTtsEngine {
   private isStopped = false;
   private audioInstance: HTMLAudioElement | null = null;
+  private currentBlobUrl: string | null = null;
 
   private getAudio(): HTMLAudioElement {
     if (!this.audioInstance) {
@@ -33,30 +52,28 @@ class NeuralJapaneseTtsEngine {
       this.audioInstance.onended = null;
       this.audioInstance.onerror = null;
     }
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
   }
 
   /**
-   * 고품질 원어민 일본어 음성 합성 및 재생 (모바일 제스처 연속 재생 보장)
+   * 고품질 원어민 일본어 AI 음성 재생
    */
-  public async speak(
-    text: string,
-    options: {
-      rate?: number;
-      volume?: number;
-      onEnd?: () => void;
-      onError?: () => void;
-    } = {}
-  ): Promise<void> {
+  public async speak(text: string, options: NeuralTtsOptions = {}): Promise<void> {
     this.stop();
     this.isStopped = false;
 
     const rate = options.rate ?? 1.0;
     const volume = options.volume ?? 1.0;
+    const voiceType = options.voiceType ?? 'natural_female';
+    const speakerId = NEURAL_SPEAKERS[voiceType] || 2;
     const sentences = splitIntoSentences(text);
 
     let currentIndex = 0;
     const audio = this.getAudio();
-    audio.volume = volume;
+    audio.volume = Math.max(0, Math.min(1, volume));
     audio.playbackRate = Math.max(0.5, Math.min(2.0, rate));
 
     const playNext = async () => {
@@ -71,7 +88,7 @@ class NeuralJapaneseTtsEngine {
       currentIndex++;
 
       try {
-        const audioUrl = await this.getAudioUrl(currentText);
+        const audioUrl = await this.getAudioUrl(currentText, speakerId);
         if (this.isStopped) return;
 
         audio.src = audioUrl;
@@ -86,11 +103,11 @@ class NeuralJapaneseTtsEngine {
         // 모바일 브라우저의 프로미스 거절(NotAllowedError) 방어
         await audio.play().catch((err) => {
           console.warn('[NeuralTTS] Play interrupted or blocked:', err);
-          if (options.onError) options.onError();
+          if (options.onError) options.onError(err);
         });
       } catch (err) {
-        console.warn('[NeuralTTS] Failed to resolve audio URL:', err);
-        if (options.onError) options.onError();
+        console.warn('[NeuralTTS] Failed to resolve neural audio URL:', err);
+        if (options.onError) options.onError(err);
       }
     };
 
@@ -100,33 +117,73 @@ class NeuralJapaneseTtsEngine {
   /**
    * 텍스트에 대한 고품질 원어민 음성 URL 획득 (CacheStorage 활용 오프라인 캐싱)
    */
-  private async getAudioUrl(text: string): Promise<string> {
-    const encodedText = encodeURIComponent(text.slice(0, 200));
-    const targetUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodedText}`;
+  private async getAudioUrl(text: string, speakerId: number): Promise<string> {
+    const cleanText = text.trim();
+    if (!cleanText) throw new Error('Empty text');
 
+    // 캐시 키 생성
+    const cacheKey = `https://nihongo.audio/tts?speaker=${speakerId}&q=${encodeURIComponent(cleanText)}`;
+
+    // 1. 브라우저 로컬 CacheStorage 확인
     if (typeof window !== 'undefined' && 'caches' in window) {
       try {
         const cache = await caches.open(AUDIO_CACHE_NAME);
-        const cachedRes = await cache.match(targetUrl);
+        const cachedRes = await cache.match(cacheKey);
         if (cachedRes) {
           const blob = await cachedRes.blob();
-          return URL.createObjectURL(blob);
+          this.currentBlobUrl = URL.createObjectURL(blob);
+          return this.currentBlobUrl;
         }
-
-        // 캐시 비동기 적재 (실패해도 재생에 영향 없음)
-        fetch(targetUrl, { mode: 'no-cors' })
-          .then((res) => {
-            if (res.type === 'opaque' || res.ok) {
-              cache.put(targetUrl, res.clone());
-            }
-          })
-          .catch(() => {});
       } catch {
-        // 캐시 조회 불가 시 직접 URL 재생
+        // 캐시 조회 실패 시 네트워크 시도로 진행
       }
     }
 
-    return targetUrl;
+    // 2. 클라우드 신경망 음성 API 호출 (GitHub Pages 등 모든 호스팅 환경 지원)
+    const apiUrl = `https://api.tts.quest/v3/voicevox/synthesis?text=${encodeURIComponent(cleanText)}&speaker=${speakerId}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8초 타임아웃
+
+    try {
+      const response = await fetch(apiUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`API returned HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const downloadUrl = data.mp3DownloadUrl || data.mp3StreamingUrl || data.wavDownloadUrl;
+
+      if (!downloadUrl) {
+        throw new Error('No audio URL found in response');
+      }
+
+      // 오디오 바이너리 다운로드 및 브라우저 로컬 캐시에 저장
+      const audioFetch = await fetch(downloadUrl);
+      const audioBlob = await audioFetch.blob();
+
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        try {
+          const cache = await caches.open(AUDIO_CACHE_NAME);
+          cache.put(
+            cacheKey,
+            new Response(audioBlob, {
+              headers: { 'Content-Type': 'audio/mp3', 'Cache-Control': 'max-age=31536000' },
+            })
+          );
+        } catch {
+          // 캐시 저장 실패해도 재생은 진행
+        }
+      }
+
+      this.currentBlobUrl = URL.createObjectURL(audioBlob);
+      return this.currentBlobUrl;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
   }
 }
 

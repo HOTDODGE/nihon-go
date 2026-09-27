@@ -69,10 +69,11 @@ export const getJapaneseVoices = (): SpeechSynthesisVoice[] => {
   return jaVoices.sort((a, b) => {
     const score = (v: SpeechSynthesisVoice) => {
       let s = 0;
-      if (v.name.includes('Natural') || v.name.includes('Online')) s += 50;
-      if (v.name.includes('Google')) s += 40;
+      if (v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Neural')) s += 100;
+      if (v.name.includes('Enhanced') || v.name.includes('Premium')) s += 80;
+      if (v.name.includes('Nanami') || v.name.includes('Keita') || v.name.includes('Kyoko') || v.name.includes('Otoya') || v.name.includes('Ayumi')) s += 50;
       if (v.name.includes('Microsoft')) s += 30;
-      if (v.name.includes('Kyoko') || v.name.includes('Nanami') || v.name.includes('Ayumi')) s += 20;
+      if (v.name.includes('Google')) s += 15;
       if (v.lang === 'ja-JP') s += 10;
       return s;
     };
@@ -200,10 +201,11 @@ function playWithNeuralTts(
   neuralJapaneseTts.speak(cleanText, {
     rate,
     volume: settings.volume,
+    voiceType: settings.openVoiceType || 'natural_female',
     onEnd,
-    onError: () => {
+    onError: (err) => {
       // 온라인 페치 실패 시 시스템 내장 일본어 음성으로 부드럽게 폴백
-      console.info('[TTS] Neural audio failed or offline, falling back to system TTS');
+      console.warn('[TTS] Neural audio failed, falling back to system TTS:', err);
       playWithWebSpeech(cleanText, rate, settings, onEnd);
     },
   });

@@ -219,7 +219,42 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({ isOpen, 
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0, 0, 0, 0.25)', padding: '8px 12px', borderRadius: 8, fontSize: '0.72rem', color: '#7dd3fc' }}>
-              <span>✓ 추가 파일 다운로드 없이 지금 즉시 선명한 원어민 발음으로 재생됩니다.</span>
+              <span>✓ GitHub Pages 및 모바일 웹에서도 403 차단 없이 100% 선명하게 재생됩니다.</span>
+            </div>
+
+            {/* 보이스 스타일 선택기 */}
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>
+                🗣️ 원어민 보이스 캐릭터 선택:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                {[
+                  { id: 'natural_female', label: '🌸 여성 원어민', sub: '시코쿠 메탄' },
+                  { id: 'natural_male', label: '🎙️ 남성 원어민', sub: '아오야마 류세이' },
+                  { id: 'zundamon', label: '🍃 캐릭터', sub: '즈다몬' },
+                ].map((item) => {
+                  const isSel = (settings.openVoiceType || 'natural_female') === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setSettings((s) => ({ ...s, openVoiceType: item.id as any }))}
+                      style={{
+                        padding: '8px 6px',
+                        borderRadius: 8,
+                        border: isSel ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                        background: isSel ? 'rgba(56, 189, 248, 0.2)' : 'rgba(0, 0, 0, 0.25)',
+                        color: isSel ? '#ffffff' : '#94a3b8',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700 }}>{item.label}</div>
+                      <div style={{ fontSize: '0.66rem', color: isSel ? '#7dd3fc' : '#64748b', marginTop: 2 }}>{item.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
